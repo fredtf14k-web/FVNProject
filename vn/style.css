@@ -1,0 +1,64 @@
+:root { --gold: #e0b43c; --text: #f2eee4; --panel: #14101acc; --line: #8a6d2f; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { background: #0b0a10; color: var(--text); font-family: "Kanit", "Noto Sans Thai", system-ui, sans-serif; overflow: hidden; }
+.hidden { display: none !important; }
+#vn { position: fixed; inset: 0; }
+.screen { position: absolute; inset: 0; }
+
+/* ---------- ปุ่ม ---------- */
+.vbtn {
+  display: inline-block; padding: 10px 26px; font: inherit; font-size: 16px; color: var(--text); text-decoration: none; cursor: pointer;
+  background: #1b1026cc; border: 1px solid var(--line); border-radius: 6px; transition: background .15s, transform .1s;
+}
+.vbtn:hover:not(:disabled) { background: #3a2650; }
+.vbtn:active:not(:disabled) { transform: scale(.97); }
+.vbtn:disabled { opacity: .4; cursor: not-allowed; }
+.vbtn.small { padding: 4px 12px; font-size: 13px; }
+.vbtn.ghost { background: transparent; }
+
+/* ---------- เมนู ---------- */
+#title { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+  background: radial-gradient(ellipse at 50% 30%, #3a2c4a, #0b0a10 70%); }
+#title h1 { font-size: clamp(40px, 8vw, 80px); letter-spacing: 3px; color: var(--gold); text-shadow: 0 4px 24px #000; }
+#title .sub { margin-top: -8px; margin-bottom: 18px; color: #bba; letter-spacing: 4px; }
+
+/* ---------- ฉาก ---------- */
+#bg { position: absolute; inset: 0; background: #1a1424 center / cover no-repeat; transition: opacity .4s; }
+#bg.fade { opacity: 0; }
+#chars { position: absolute; inset: 0; pointer-events: none; }
+.char {
+  position: absolute; bottom: 0; height: 88%; aspect-ratio: 3 / 5; transform: translateX(-50%);
+  background: center bottom / contain no-repeat; filter: drop-shadow(0 6px 18px #000a);
+  animation: charIn .4s ease-out;
+}
+.char[data-pos="left"] { left: 22%; } .char[data-pos="center"] { left: 50%; } .char[data-pos="right"] { left: 78%; }
+.char.ph { /* ยังไม่มีรูป: กล่องแทนตัวละคร */
+  display: grid; place-items: end center; padding-bottom: 28%; font-size: 22px; color: #fff9;
+  background: linear-gradient(180deg, #ffffff10, #ffffff22); border: 2px dashed #fff4; border-radius: 12px; height: 70%;
+}
+@keyframes charIn { from { opacity: 0; transform: translateX(-50%) translateY(14px); } }
+#topbar { position: absolute; top: 10px; right: 12px; display: flex; gap: 6px; z-index: 3; }
+
+/* ---------- กล่องข้อความ ---------- */
+#dialog {
+  position: absolute; left: 50%; bottom: 3vh; transform: translateX(-50%); z-index: 2;
+  width: min(1000px, 94vw); min-height: 22vh; padding: 20px 28px 18px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(4px); cursor: pointer;
+}
+#name { position: absolute; top: -16px; left: 22px; padding: 2px 18px; font-weight: 700; color: var(--gold);
+  background: #1b1026; border: 1px solid var(--line); border-radius: 6px; }
+#name:empty { display: none; }
+#text { font-size: clamp(15px, 2vw, 20px); line-height: 1.7; white-space: pre-wrap; }
+#text.narr { color: #cfc7b5; font-style: italic; }
+#next { position: absolute; right: 18px; bottom: 10px; color: var(--gold); animation: blink 1s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+
+/* ---------- ตัวเลือก ---------- */
+#choices { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; background: #0006; }
+#choices .vbtn { min-width: min(520px, 86vw); font-size: 18px; padding: 14px 24px; }
+
+#toast { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); z-index: 5; padding: 6px 18px; border-radius: 999px;
+  background: #000c; border: 1px solid var(--line); font-size: 14px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

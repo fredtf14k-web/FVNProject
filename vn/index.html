@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Gods — Visual Novel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="vn">
+
+  <!-- หน้าเมนู -->
+  <section id="title" class="screen">
+    <h1>Four Gods</h1>
+    <p class="sub">Visual Novel</p>
+    <button id="btn-new" class="vbtn">เริ่มเรื่องใหม่</button>
+    <button id="btn-continue" class="vbtn" disabled>เล่นต่อ</button>
+    <a class="vbtn ghost" href="../index.html">🏠 กลับหน้าหลัก</a>
+  </section>
+
+  <!-- ฉากเล่นเรื่อง -->
+  <section id="stage" class="screen hidden">
+    <div id="bg"></div>
+    <div id="chars"></div>
+    <div id="topbar">
+      <button id="btn-save" class="vbtn small">💾 เซฟ</button>
+      <button id="btn-load" class="vbtn small">📂 โหลด</button>
+      <button id="btn-menu" class="vbtn small">☰ เมนู</button>
+    </div>
+    <div id="dialog">
+      <div id="name"></div>
+      <div id="text"></div>
+      <span id="next">▼</span>
+    </div>
+    <div id="choices" class="hidden"></div>
+    <div id="toast" class="hidden"></div>
+  </section>
+
+</div>
+
+<!-- ข้อมูลเรื่อง (แก้บทที่ story/ ไม่ต้องแตะ engine.js) -->
+<script src="story/chapter1.js"></script>
+<script src="engine.js"></script>
+</body>
+</html>

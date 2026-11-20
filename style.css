@@ -1,0 +1,713 @@
+:root {
+  --bg: #15181e;
+  --panel: #1e232c;
+  --panel-2: #272d38;
+  --line: #3a4252;
+  --text: #e8eaee;
+  --muted: #8b93a3;
+  --creation: #e0b43c;
+  --life: #4caf6a;
+  --destruction: #d9503f;
+  --death: #8d5cc7;
+  --player: #3d8bd9;
+  --enemy: #d9503f;
+  --radius: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Kanit", "Noto Sans Thai", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.4;
+}
+button { font-family: inherit; color: inherit; cursor: pointer; }
+.hidden { display: none !important; }
+
+/* ล็อกให้พอดีจอ ไม่มีเลื่อนขึ้นลงระหว่างเล่น */
+body { overflow: hidden; }
+#app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; gap: 8px; padding: 8px; }
+.zone-label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+
+/* ---------- บนสุด ---------- */
+#top {
+  display: grid; grid-template-columns: 440px minmax(260px, 1fr) 90px; /* คอลัมน์ซ้าย/ขวากว้างคงที่ → หลอด Influence ไม่ยืด-หดตามความยาวข้อความเฟส */
+  align-items: center; gap: 16px;
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 6px 12px;
+}
+#turn-info { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#gauge-wrap { min-width: 0; }
+#gauge { display: flex; height: 22px; border-radius: 11px; overflow: hidden; background: var(--line); }
+#gauge-player { background: var(--player); width: 50%; transition: width .5s; }
+#gauge-enemy  { background: var(--enemy);  width: 50%; transition: width .5s; }
+#gauge-text { text-align: center; margin-top: 2px; }
+
+/* โจทย์วงเวทย์ลอยกลางสนาม (ไม่กินพื้นที่ layout) */
+#challenge-wrap {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  z-index: 5; pointer-events: none; text-align: center;
+  background: color-mix(in srgb, var(--panel) 92%, #000); border: 1px solid var(--line);
+  border-radius: 12px; padding: 6px 14px 10px; box-shadow: 0 6px 24px #000a;
+  animation: pop .25s ease-out;
+}
+#challenge-wrap .zone-label { margin-bottom: 4px; }
+@keyframes pop { from { opacity: 0; transform: translate(-50%, -50%) scale(.8); } }
+
+/* ---------- การ์ดวงเวทย์ ---------- */
+.magic-card {
+  width: 74px; height: 100px; border-radius: var(--radius);
+  border: 2px solid var(--line); background: var(--panel-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; font-size: 12px; user-select: none; position: relative;
+}
+.magic-card .icon { font-size: 26px; }
+.magic-card.creation    { border-color: var(--creation);    background: color-mix(in srgb, var(--creation) 22%, var(--panel)); }
+.magic-card.life        { border-color: var(--life);        background: color-mix(in srgb, var(--life) 22%, var(--panel)); }
+.magic-card.destruction { border-color: var(--destruction); background: color-mix(in srgb, var(--destruction) 22%, var(--panel)); }
+.magic-card.death       { border-color: var(--death);       background: color-mix(in srgb, var(--death) 22%, var(--panel)); }
+#hand .magic-card { cursor: pointer; transition: transform .12s; }
+#hand .magic-card:hover { transform: translateY(-6px); }
+#hand .magic-card.selected { transform: translateY(-10px); outline: 3px solid #fff; }
+#hand .magic-card.match { box-shadow: 0 0 0 3px #fff4; }
+
+/* การ์ดมือ + การ์ดโจทย์: หน้าตาแบบเดียวกับการ์ดยูนิต (ช่องภาพ / แถบชื่อ / ป้ายตำแหน่งแท่น) สัดส่วน 5:7 */
+.magic-card.creation    { --c: var(--creation); }
+.magic-card.life        { --c: var(--life); }
+.magic-card.destruction { --c: var(--destruction); }
+.magic-card.death       { --c: var(--death); }
+#hand .magic-card, #mull-list .magic-card, .played-list .magic-card, #challenge.magic-card {
+  width: auto; aspect-ratio: 5 / 7; padding: 4px; gap: 3px;
+  justify-content: flex-start; align-items: stretch; overflow: hidden; border-radius: 10px;
+  border: 2px solid var(--c);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, var(--panel-2)) 0%, var(--panel-2) 75%);
+  box-shadow: 0 3px 8px #0008, inset 0 0 0 1px #fff1;
+}
+#hand .magic-card { height: clamp(120px, 20vh, 172px); flex: none; }
+#challenge.magic-card { height: 132px; }
+#hand .magic-card .icon, #mull-list .magic-card .icon, .played-list .magic-card .icon, #challenge .icon {
+  flex: 1; min-height: 0; display: grid; place-items: center; font-size: clamp(30px, 5vh, 44px); line-height: 1;
+  border-radius: 6px; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--c) 45%, transparent), #0005 80%);
+}
+#hand .magic-card .cn, #mull-list .magic-card .cn, .played-list .magic-card .cn, #challenge .cn {
+  font-size: 12px; line-height: 1.15; padding: 3px 2px; border-radius: 4px; text-align: center;
+  background: color-mix(in srgb, var(--c) 35%, #000);
+}
+#hand .magic-card .cp, #mull-list .magic-card .cp, .played-list .magic-card .cp, #challenge .cp {
+  position: absolute; top: 6px; left: 6px; z-index: 1; width: 24px; height: 24px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 15px; line-height: 1;
+  background: #000c; border: 1px solid var(--c); color: #fff;
+}
+
+/* ---------- กลาง ---------- */
+#main { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 260px; grid-template-rows: minmax(0, 1fr); gap: 8px; }
+#arena { position: relative; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.zone {
+  flex: 1; min-height: 0; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 6px 12px;
+}
+/* zone เป็น size container เพื่อให้การ์ดสูงเต็มพื้นที่ที่เหลือ (หน่วย cqh) ไม่เล็กเกินจนมีที่ว่าง */
+.zone { display: flex; flex-direction: column; gap: 4px; container-type: size; }
+.zone .row { flex: 1; min-height: 0; }
+
+/* แถบผู้เล่นใต้โซน: รูป · Energy · ไพ่คว่ำ */
+.side-bar {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding-top: 4px; border-top: 1px solid var(--line); font-size: 12px;
+}
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font-size: 17px; line-height: 1; background: var(--panel-2); border: 2px solid var(--player);
+}
+#bar-enemy .avatar { border-color: var(--enemy); }
+.sb-name { font-weight: 700; }
+.sb-energy b { color: var(--creation); font-size: 15px; }
+.sb-cards { display: inline-flex; align-items: center; gap: 6px; }
+.backs { display: inline-flex; padding-left: 7px; }
+.back {
+  display: block; width: 16px; height: 22px; margin-left: -7px; border-radius: 3px;
+  border: 1px solid #fff5; box-shadow: 1px 0 2px #0008;
+  background: repeating-linear-gradient(45deg, #3b4a7a 0 3px, #2a3558 3px 6px);
+}
+.sb-cards .cnt { color: var(--muted); }
+
+/* โต๊ะวางการ์ด Energy Phase: ศัตรู (ซ้าย) · โจทย์ (กลาง) · ผู้เล่น (ขวา) — การ์ดที่เล่นเป็นการ์ดจริงวางเอียงเล็กน้อย พุ่งมาจากมือ */
+#ch-row { display: flex; align-items: center; justify-content: center; gap: 22px; }
+.played-list {
+  position: relative; display: flex; flex-wrap: wrap; align-content: center; gap: 6px 0;
+  width: min(340px, 28vw); min-height: 120px;
+}
+#played-b { justify-content: flex-end; } #played-p { justify-content: flex-start; }
+.played-list::before {
+  position: absolute; top: -20px; font-size: 13px; font-weight: 700; letter-spacing: .5px; color: var(--muted); white-space: nowrap;
+}
+#played-b::before { content: 'ศัตรู'; right: 0; color: var(--enemy); }
+#played-p::before { content: 'ผู้เล่น'; left: 0; color: var(--player); }
+.played-list .magic-card {
+  position: relative; z-index: 20; flex: none; margin-left: -28px;
+  height: clamp(92px, 16vh, 132px); width: auto; aspect-ratio: 5 / 7;
+  box-shadow: 0 4px 10px #000a, inset 0 0 0 1px #fff1;
+}
+.played-list .magic-card:first-child { margin-left: 0; }
+.played-list .magic-card.perfect { box-shadow: 0 0 14px 2px #fff9, 0 4px 10px #000a; }
+.played-list .magic-card.burnt { filter: brightness(.65) saturate(.7); }
+.played-list .magic-card .pl-g {
+  position: absolute; right: 4px; bottom: 26px; font-size: 13px; font-weight: 700; line-height: 1;
+  padding: 2px 6px; border-radius: 999px; background: #000c; color: var(--creation); border: 1px solid var(--creation);
+}
+.played-list .magic-card .pl-burn { position: absolute; right: 4px; top: 4px; font-size: 16px; }
+/* หน้าต่างโจทย์ใหญ่ขึ้น การ์ดโจทย์อยู่กึ่งกลาง */
+#challenge-wrap { padding: 20px 36px 24px; border-radius: 24px; max-width: 98%; }
+#challenge-wrap > .zone-label { font-size: 15px; margin-bottom: 8px; }
+#challenge.magic-card { height: clamp(150px, 26vh, 240px); margin-inline: auto; }
+#challenge .icon { font-size: clamp(48px, 9vh, 84px); }
+#challenge .cn { font-size: 16px; padding: 5px 2px; }
+#challenge .cp { width: 34px; height: 34px; font-size: 20px; top: 8px; left: 8px; }
+
+#enemy-zone { border-color: color-mix(in srgb, var(--enemy) 50%, var(--line)); }
+#player-zone { border-color: color-mix(in srgb, var(--player) 50%, var(--line)); }
+.row { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+/* เทพ (รวมเทพที่ยึดมา) เรียงแนวนอนข้างเทพหลักเสมอ อยู่ก่อนฮีโร่ */
+.slot-god { display: flex; gap: 10px; flex-wrap: wrap; }
+.slot-heroes { flex: 1; display: flex; gap: 10px; flex-wrap: wrap; min-width: 0; }
+
+/* ยูนิต (เทพ / ฮีโร่) */
+.unit {
+  width: 140px; min-height: 130px; padding: 8px;
+  border: 2px solid var(--line); border-radius: var(--radius);
+  background: var(--panel-2); display: flex; flex-direction: column; gap: 4px;
+  text-align: center; position: relative;
+}
+.unit.god { width: 150px; border-width: 3px; }
+.unit .icon { font-size: 30px; }
+.unit .name { font-weight: 700; font-size: 13px; }
+.unit .skill { font-size: 11px; color: var(--muted); flex: 1; }
+.unit .pips { letter-spacing: 2px; font-size: 14px; }
+.unit .tag { font-size: 11px; color: var(--creation); }
+.unit.creation    { border-color: var(--creation); }
+.unit.life        { border-color: var(--life); }
+.unit.destruction { border-color: var(--destruction); }
+.unit.death       { border-color: var(--death); }
+/* การ์ดยูนิตบนสนาม — สัดส่วนการ์ดแนวตั้ง มีช่องภาพ / แถบชื่อ / พลัง / สถานะ
+   คำอธิบายสกิลดูได้จากการเอาเมาส์ชี้ (tooltip) */
+:is(#arena, #hero-list, #god-list, #deck-list) .unit {
+  --c: var(--player);
+  height: clamp(104px, 17vh, 156px); aspect-ratio: 5 / 7; width: auto; min-height: 0;
+  padding: 4px; gap: 3px; border-radius: 10px; overflow: hidden;
+  border: 2px solid var(--c);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, var(--panel-2)) 0%, var(--panel-2) 70%);
+  box-shadow: 0 3px 8px #0008, inset 0 0 0 1px #fff1;
+}
+:is(#arena, #hero-list, #god-list, #deck-list) .unit.god { --c: var(--creation); aspect-ratio: 5 / 7; width: auto; border-width: 3px; box-shadow: 0 3px 8px #0008, 0 0 10px color-mix(in srgb, var(--c) 55%, transparent); }
+:is(#arena, #hero-list, #god-list, #deck-list) .unit.creation    { --c: var(--creation); }
+:is(#arena, #hero-list, #god-list, #deck-list) .unit.life        { --c: var(--life); }
+:is(#arena, #hero-list, #god-list, #deck-list) .unit.destruction { --c: var(--destruction); }
+:is(#arena, #hero-list, #god-list, #deck-list) .unit.death       { --c: var(--death); }
+:is(#arena, #hero-list, #god-list, #deck-list) .unit .icon {
+  flex: 1; min-height: 0; display: grid; place-items: center; font-size: clamp(24px, 4.2vh, 38px); line-height: 1;
+  border-radius: 6px; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--c) 45%, transparent), #0005 80%);
+}
+:is(#arena, #hero-list, #god-list, #deck-list) .unit .name {
+  font-size: 11px; line-height: 1.15; padding: 2px 2px; border-radius: 4px;
+  background: color-mix(in srgb, var(--c) 35%, #000); display: grid; place-items: center; min-height: 2.5em;
+}
+:is(#arena, #hero-list, #god-list, #deck-list) .unit .pips { font-size: 9px; letter-spacing: 1px; line-height: 1; color: var(--c); }
+:is(#arena, #hero-list, #god-list, #deck-list) .unit .tag { font-size: 10px; line-height: 1.1; color: var(--muted); }
+:is(#arena, #hero-list, #god-list, #deck-list) .unit .skill { display: none; }
+.unit.targetable { cursor: pointer; outline: 3px dashed #fff; outline-offset: 2px; }
+.unit.targetable:hover { background: var(--line); }
+.unit.sick { opacity: .75; }
+
+:is(#arena, #hero-list, #god-list, #deck-list) .unit { user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+
+/* การ์ดบนสนามสูงเต็มโซน (หักพื้นที่แถบผู้เล่นด้านล่าง ~42px) ปรับตามขนาดหน้าจอ/จำนวนแถบที่แสดงอัตโนมัติ
+   ถ้าจะปรับขนาดการ์ดให้แก้ที่ตัวเลข 42px (ยิ่งน้อยยิ่งใหญ่) หรือเพดาน 320px */
+#arena .unit { height: min(320px, max(96px, calc(100cqh - 42px))); }
+
+/* ===== กรอบเทพ: เอกลักษณ์ประจำองค์ =====
+   โครงสร้าง: ลายมุม 4 มุม (.orn tl/tr/bl/br) + สัญลักษณ์เหนือกรอบ (::before) + ออร่าเรืองแสงเต้นช้าๆ (::after)
+   อยากใช้อาร์ตจริง: เปลี่ยน background-image ของ .orn / ::before ของเทพแต่ละองค์ได้เลย */
+:is(#arena, #god-list) .unit.god { overflow: visible; isolation: isolate; border-width: 4px; }
+#arena .zone { padding-top: 12px; } /* เผื่อที่ให้สัญลักษณ์เหนือกรอบเทพ */
+#god-list { padding: 18px 12px 16px; }
+
+.unit.god .orn {
+  position: absolute; z-index: 3; pointer-events: none; width: 46px; height: 46px;
+  background: no-repeat center / contain;
+}
+.unit.god .orn.tl { top: -12px; left: -12px; }
+.unit.god .orn.tr { top: -12px; right: -12px; transform: scaleX(-1); }
+.unit.god .orn.bl { bottom: -12px; left: -12px; transform: scaleY(-1); }
+.unit.god .orn.br { bottom: -12px; right: -12px; transform: scale(-1, -1); }
+:is(#arena, #god-list) .unit.god::before { /* สัญลักษณ์เหนือกรอบ */
+  content: ''; position: absolute; z-index: 3; pointer-events: none;
+  left: 50%; top: -12px; width: 76px; height: 22px; transform: translateX(-50%);
+  background: no-repeat center / contain;
+}
+:is(#arena, #god-list) .unit.god::after { /* ออร่าเรืองแสง */
+  content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  animation: godGlow 2.6s ease-in-out infinite alternate;
+}
+@keyframes godGlow {
+  from { box-shadow: 0 0 6px 0 color-mix(in srgb, var(--c) 45%, transparent); }
+  to   { box-shadow: 0 0 22px 5px color-mix(in srgb, var(--c) 85%, transparent); }
+}
+
+/* เทพผู้สร้าง — กรอบทองสองชั้น · ประกายแสงที่มุม · รัศมีเหนือกรอบ */
+:is(#arena, #god-list) .unit.god.creation {
+  border-style: double;
+  background-image: radial-gradient(circle at 50% -8%, #e0b43c66, transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, var(--panel-2)) 0%, var(--panel-2) 70%);
+}
+.unit.god.creation .orn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cg fill='%23e0b43c'%3E%3Cpath d='M10 0L12.2 7.8L20 10L12.2 12.2L10 20L7.8 12.2L0 10L7.8 7.8Z'/%3E%3Cpath d='M27 3L28 6L31 7L28 8L27 11L26 8L23 7L26 6Z'/%3E%3Cpath d='M7 27L8 30L11 31L8 32L7 35L6 32L3 31L6 30Z'/%3E%3C/g%3E%3Cpath d='M32 7H46M7 32V46' stroke='%23e0b43c' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+:is(#arena, #god-list) .unit.god.creation::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 22'%3E%3Cpath d='M6 20Q36 -10 66 20' fill='none' stroke='%23e0b43c' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M36 1L37.6 6L42 7.5L37.6 9L36 14L34.4 9L30 7.5L34.4 6Z' fill='%23ffe08a'/%3E%3C/svg%3E");
+}
+
+/* เทพแห่งชีวิต — เถาวัลย์ใบไม้เลื้อยทั้ง 4 มุม · ช่อใบไม้เหนือกรอบ */
+:is(#arena, #god-list) .unit.god.life {
+  background-image: radial-gradient(circle at 50% 108%, #4caf6a55, transparent 60%),
+    linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, var(--panel-2)) 0%, var(--panel-2) 70%);
+}
+.unit.god.life .orn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M3 46C3 22 14 6 46 3' fill='none' stroke='%234caf6a' stroke-width='2' stroke-linecap='round'/%3E%3Cg fill='%234caf6a'%3E%3Cellipse cx='10.5' cy='30' rx='5' ry='2.3' transform='rotate(15 10.5 30)'/%3E%3Cellipse cx='19' cy='19' rx='5' ry='2.3' transform='rotate(40 19 19)'/%3E%3C/g%3E%3Cg fill='%2380d494'%3E%3Cellipse cx='7' cy='12' rx='5' ry='2.3' transform='rotate(-60 7 12)'/%3E%3Cellipse cx='27' cy='14' rx='5' ry='2.3' transform='rotate(60 27 14)'/%3E%3Ccircle cx='38' cy='9' r='1.8'/%3E%3Ccircle cx='9' cy='40' r='1.8'/%3E%3C/g%3E%3C/svg%3E");
+}
+:is(#arena, #god-list) .unit.god.life::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 22'%3E%3Cg fill='%234caf6a'%3E%3Cellipse cx='25' cy='14' rx='8' ry='3' transform='rotate(-25 25 14)'/%3E%3Cellipse cx='47' cy='14' rx='8' ry='3' transform='rotate(25 47 14)'/%3E%3C/g%3E%3Cellipse cx='36' cy='9' rx='3.4' ry='8' fill='%2380d494'/%3E%3C/svg%3E");
+}
+
+/* เทพทำลายล้าง — เปลวไฟที่มุมล่าง · เสี้ยนถ่านร้อนที่มุมบน · เขาเหนือกรอบ */
+:is(#arena, #god-list) .unit.god.destruction {
+  background-image: radial-gradient(circle at 50% 112%, #d9503f77, transparent 58%),
+    linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, var(--panel-2)) 0%, var(--panel-2) 70%);
+}
+.unit.god.destruction .orn.tl, .unit.god.destruction .orn.tr {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M3 3L30 8L12 13ZM3 3L8 30L13 12Z' fill='%23d9503f' stroke='%23f0a040' stroke-width='1' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.unit.god.destruction .orn.bl, .unit.god.destruction .orn.br {
+  width: 34px; height: 44px; bottom: -10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 32'%3E%3Cpath d='M12 0C13 9 22 13 22 22A10 10 0 0 1 2 22C2 16 6 14 7 8C9 11 10 12 11 12C11 8 11 4 12 0Z' fill='%23d9503f'/%3E%3Cpath d='M12 14C13 18 17 19 17 24A5 5 0 0 1 7 24C7 20 11 19 12 14Z' fill='%23f0a040'/%3E%3C/svg%3E");
+}
+.unit.god.destruction .orn.bl { left: -10px; transform: rotate(-12deg); }
+.unit.god.destruction .orn.br { right: -10px; transform: rotate(12deg); }
+:is(#arena, #god-list) .unit.god.destruction::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 22'%3E%3Cpath d='M33 20C22 20 11 14 5 1C16 3 26 7 34 13Z' fill='%23d9503f'/%3E%3Cpath d='M39 20C50 20 61 14 67 1C56 3 46 7 38 13Z' fill='%23d9503f'/%3E%3C/svg%3E");
+}
+
+/* เทพแห่งความตาย — วงเล็บแหลมโกธิกทั้ง 4 มุม · หนามแหลมเหนือกรอบ */
+:is(#arena, #god-list) .unit.god.death {
+  background-image: radial-gradient(circle at 50% -8%, #8d5cc766, transparent 62%),
+    linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, var(--panel-2)) 0%, var(--panel-2) 70%);
+}
+.unit.god.death .orn {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Cpath d='M3 46V12L12 3H46' fill='none' stroke='%238d5cc7' stroke-width='2.5' stroke-linejoin='round'/%3E%3Cpath d='M9 46V17L17 9H46' fill='none' stroke='%238d5cc7' stroke-width='1' stroke-opacity='.55' stroke-linejoin='round'/%3E%3Cpath d='M14 14L18 18L14 22L10 18Z' fill='%23b88be8'/%3E%3C/svg%3E");
+}
+:is(#arena, #god-list) .unit.god.death::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 22'%3E%3Cg fill='%238d5cc7'%3E%3Cpath d='M36 0L42 20H30Z'/%3E%3Cpath d='M22 6L27 20H17Z'/%3E%3Cpath d='M50 6L55 20H45Z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* ===== กรอบสีตามเทพที่ฮีโร่สังกัด =====
+   กรอบฟ้าเดิมของฮีโร่ยังอยู่ · เพิ่มวงแหวนสีเทพรอบนอก + เส้นบางด้านใน + อัญมณีเล็กที่ขอบบน
+   (ตั้งใจให้ลายละเอียดน้อยกว่ากรอบเทพ) ฮีโร่ที่พลิกมาจะเปลี่ยนสีตามเทพฝั่งที่ยึดไป */
+#arena .unit.fr { --fc: var(--creation); }
+#arena .unit.fr-creation    { --fc: var(--creation); }
+#arena .unit.fr-life        { --fc: var(--life); }
+#arena .unit.fr-destruction { --fc: var(--destruction); }
+#arena .unit.fr-death       { --fc: var(--death); }
+#arena .unit.fr {
+  box-shadow: 0 3px 8px #0008, 0 0 0 3px var(--fc), 0 0 9px 3px color-mix(in srgb, var(--fc) 45%, transparent), inset 0 0 0 1px #fff1;
+}
+#arena .unit.fr::before { /* เส้นบางด้านในสีเทพ */
+  content: ''; position: absolute; inset: 2px; border: 1px solid color-mix(in srgb, var(--fc) 70%, transparent);
+  border-radius: 7px; pointer-events: none;
+}
+#arena .unit.fr::after { /* อัญมณีเล็กกลางขอบบน */
+  content: ''; position: absolute; top: 0; left: 50%; width: 8px; height: 8px; margin-top: -4px; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); transform: translateX(-50%) rotate(45deg);
+  background: var(--fc); box-shadow: 0 0 5px var(--fc); pointer-events: none;
+}
+
+/* ปุ่มมุมขวาบน: กฎการเล่น (i) + ยอมแพ้ (ธงขาว จางๆ ไม่แย่งความสนใจ) */
+.top-actions { display: flex; align-items: center; gap: 8px; justify-self: end; }
+.quit-btn {
+  width: 30px; height: 30px; border-radius: 50%; font-size: 15px; line-height: 1; display: grid; place-items: center;
+  background: #0006; border: 1px solid #ffffff2a; opacity: .55; transition: opacity .15s, background .15s;
+}
+.quit-btn:hover, .quit-btn:focus-visible { opacity: 1; background: #d9503f55; }
+#quit-modal .modal-box { max-width: 420px; text-align: center; }
+#quit-modal .modal-box p { color: var(--muted); }
+
+/* ===== ปุ่มกฎการเล่น (i) ===== */
+.help-btn {
+  position: relative; justify-self: end; width: 34px; height: 34px; border-radius: 50%;
+  font: italic 700 20px/1 Georgia, "Times New Roman", serif; color: #111;
+  background: var(--creation); border: 2px solid #fff6; box-shadow: 0 2px 8px #0008;
+}
+.help-btn:hover { filter: brightness(1.12); }
+.help-btn.attention { animation: helpPulse 1.3s ease-out infinite; }
+.help-btn.attention::after { /* ป้ายบอกใบ้ ข้างปุ่ม หายไปพร้อมแสงกระพริบ */
+  content: 'กดดูกฎการเล่น'; position: absolute; right: calc(100% + 12px); top: 50%; transform: translateY(-50%);
+  font: 600 12px/1 "Kanit", system-ui, sans-serif; white-space: nowrap; color: #111;
+  background: var(--creation); padding: 6px 10px; border-radius: 999px; box-shadow: 0 2px 8px #0008;
+  animation: helpBubble 1.3s ease-in-out infinite alternate;
+}
+@keyframes helpPulse {
+  0%   { box-shadow: 0 0 0 0 #e0b43cdd, 0 2px 8px #0008; transform: scale(1); }
+  50%  { transform: scale(1.12); }
+  100% { box-shadow: 0 0 0 16px #e0b43c00, 0 2px 8px #0008; transform: scale(1); }
+}
+@keyframes helpBubble { from { opacity: .75; } to { opacity: 1; } }
+
+/* หน้าต่างกฎ */
+.rules-box { max-width: 780px; max-height: 90vh; }
+.rules-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 6px; }
+.tab { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 16px; font-size: 13px; }
+.tab.active { background: var(--creation); border-color: var(--creation); color: #111; font-weight: 700; }
+#rules-body { overflow-y: auto; min-height: 0; max-height: 62vh; padding-right: 8px; font-size: 13.5px; line-height: 1.55; }
+#rules-body h3 { font-size: 15px; margin: 14px 0 6px; color: var(--creation); }
+#rules-body h3:first-child { margin-top: 0; }
+#rules-body ul, #rules-body ol { padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+#rules-body .rl { list-style: none; padding-left: 0; }
+#rules-body .rl li { padding: 6px 10px; background: var(--panel-2); border-radius: 8px; border-left: 3px solid var(--line); }
+#rules-body .note { color: var(--muted); font-size: 12.5px; }
+#rules-body .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; list-style: none; padding-left: 0; }
+#rules-body .chips li { padding: 6px 10px; background: var(--panel-2); border-radius: 8px; border-left: 3px solid var(--line); font-size: 12.5px; }
+#rules-body .chips b { display: block; font-size: 13px; }
+#rules-body .chips .c-creation { border-left-color: var(--creation); } #rules-body .chips .c-life { border-left-color: var(--life); }
+#rules-body .chips .c-destruction { border-left-color: var(--destruction); } #rules-body .chips .c-death { border-left-color: var(--death); }
+
+/* ปุ่มสลายฮีโร่ (Dissolve) บนการ์ดฮีโร่ฝั่งผู้เล่น */
+.dissolve-btn {
+  position: absolute; top: 3px; right: 3px; z-index: 2;
+  font-size: 10px; line-height: 1; padding: 3px 6px; border-radius: 999px;
+  background: #000b; border: 1px solid #fff5; color: #fff;
+}
+.dissolve-btn:hover { background: var(--destruction); border-color: var(--destruction); }
+.dissolve-btn.armed { background: var(--destruction); border-color: #fff; font-weight: 700; }
+
+/* กล่องรายละเอียดตอนกดค้างที่การ์ด */
+#unit-tip {
+  position: fixed; z-index: 20; pointer-events: none; width: 230px;
+  background: var(--panel); border: 1px solid #fff6; border-radius: 10px;
+  padding: 10px 12px; box-shadow: 0 8px 28px #000c; display: flex; flex-direction: column; gap: 4px;
+}
+#unit-tip .tip-head { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+#unit-tip .tip-icon { font-size: 26px; }
+#unit-tip .tip-desc { font-size: 13px; padding: 4px 0; border-block: 1px solid var(--line); }
+#unit-tip .tip-meta { font-size: 12px; color: var(--muted); }
+
+/* แท่นวงเวทย์ */
+#altar { margin-left: auto; }
+#altar-grid {
+  display: grid; grid-template-columns: repeat(3, 28px); grid-template-rows: repeat(3, 28px); gap: 3px;
+  grid-template-areas: "tl . tr" ". c ." "bl . br";
+}
+.altar-slot {
+  display: grid; place-items: center; border-radius: 6px; font-size: 16px;
+  border: 2px solid var(--line); color: var(--muted); background: var(--panel-2);
+}
+.altar-slot[data-pos="tl"] { grid-area: tl; } .altar-slot[data-pos="tr"] { grid-area: tr; }
+.altar-slot[data-pos="c"]  { grid-area: c; }  .altar-slot[data-pos="bl"] { grid-area: bl; }
+.altar-slot[data-pos="br"] { grid-area: br; }
+.altar-slot.lit { background: #fff; color: #111; border-color: #fff; box-shadow: 0 0 10px #fff8; }
+
+/* Combat Log */
+#log-panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 8px; display: flex; flex-direction: column;
+  min-height: 0;
+}
+#log { flex: 1; min-height: 0; overflow-y: auto; font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+#log p { padding: 3px 6px; border-left: 3px solid var(--line); background: var(--panel-2); }
+#log p.me  { border-left-color: var(--player); }
+#log p.bot { border-left-color: var(--enemy); }
+#log p.sys { border-left-color: var(--creation); color: var(--creation); }
+
+/* ---------- ล่างสุด ---------- */
+#bottom {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 8px 12px;
+}
+#mode-bar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.mode-btn, .btn {
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 6px; padding: 8px 12px; font-size: 13px;
+}
+.mode-btn:hover, .btn:hover:not(:disabled) { background: var(--line); }
+.mode-btn:disabled { opacity: .4; cursor: not-allowed; }
+.mode-btn.active { background: #fff; color: #111; border-color: #fff; }
+.btn.primary { background: var(--player); border-color: var(--player); font-weight: 700; }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+#hand-row { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; }
+#hand { display: flex; gap: 10px; flex: 1; min-width: 0; padding-top: 10px; flex-wrap: wrap; }
+#controls { display: flex; flex-direction: column; gap: 6px; align-items: stretch; min-width: 190px; }
+#energy-box { font-size: 16px; text-align: center; }
+#energy-box b { font-size: 22px; color: var(--creation); }
+
+/* ---------- Modal ---------- */
+.modal { position: fixed; inset: 0; background: #000a; display: grid; place-items: center; z-index: 10; padding: 12px; }
+.modal-box {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 16px; max-width: 720px; width: 100%; display: flex; flex-direction: column; gap: 12px;
+}
+.modal-box h2 { font-size: 18px; }
+/* หน้าต่างเลือกเทพ: การ์ดแบบเดียวกับบนสนาม */
+#god-list { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; padding: 8px 4px 12px; }
+#god-list .unit { flex: 0 0 auto; height: 184px; cursor: pointer; transition: transform .12s; }
+#god-list .unit .icon { font-size: 42px; }
+#god-list .unit .name { font-size: 12px; }
+#god-list .unit:hover { transform: translateY(-4px); }
+.modal-hint { font-size: 12px; color: var(--muted); margin-top: -6px; }
+
+/* คลังฮีโร่: การ์ดแบบเดียวกับบนสนาม เรียงแถวเดียว เลื่อนซ้าย-ขวาเท่านั้น */
+#hero-modal .modal-box { max-width: 820px; }
+#hero-list {
+  display: flex; flex-wrap: nowrap; gap: 12px;
+  overflow-x: auto; overflow-y: hidden; overscroll-behavior: contain;
+  padding: 8px 4px 12px; scrollbar-width: thin; scrollbar-color: var(--line) transparent;
+}
+#hero-list .unit { flex: 0 0 auto; height: 184px; cursor: pointer; transition: transform .12s; }
+#hero-list .unit .icon { font-size: 42px; }
+#hero-list .unit .name { font-size: 12px; }
+#hero-list .unit:hover:not(.disabled) { transform: translateY(-4px); }
+#hero-list .unit .cost {
+  position: absolute; top: 5px; left: 5px; z-index: 1;
+  background: var(--creation); color: #111; font-weight: 700; font-size: 12px;
+  border-radius: 999px; padding: 1px 7px; box-shadow: 0 1px 4px #000a;
+}
+#hero-list .unit.disabled { opacity: .4; cursor: not-allowed; }
+
+
+/* ---------- หน้าต่างเลือกเด็คฮีโร่ (8 ใบ) ---------- */
+#deck-modal .modal-box { max-width: 1060px; flex-direction: row; gap: 22px; align-items: stretch; max-height: 96vh; }
+#deck-side { flex: 0 0 300px; display: flex; flex-direction: column; gap: 10px; border-right: 3px solid var(--creation); padding-right: 18px; }
+#deck-side h2 { font-size: 20px; color: var(--life); letter-spacing: .5px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+#deck-timer { font-size: 26px; font-weight: 700; color: var(--creation); }
+#deck-timer.low { color: #ff5b4d; animation: helpPulse 1s ease-in-out infinite; }
+.deck-who { display: flex; flex-direction: column; gap: 6px; }
+.deck-who .nm { font-weight: 700; font-size: 15px; display: flex; justify-content: space-between; }
+.deck-who .nm small { color: var(--muted); font-weight: 400; }
+.deck-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.dslot { aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--line); background: #0004; display: grid; place-items: center; font-size: 24px; }
+.dslot.on { border-color: var(--creation); background: #fff1; cursor: pointer; }
+.dslot.foe.on { border-color: var(--destruction); cursor: default; font-size: 18px; color: var(--muted); }
+#deck-side .btn { margin-top: auto; }
+#deck-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+#deck-list { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; overflow-y: auto; padding: 8px 4px; justify-items: center; scrollbar-width: thin; }
+#deck-list .unit { width: 100%; max-width: 130px; height: auto; aspect-ratio: 5 / 7; cursor: pointer; transition: transform .12s, box-shadow .12s; position: relative; }
+#deck-list .unit .icon { font-size: 34px; }
+#deck-list .unit .name { font-size: 12px; }
+#deck-list .unit:hover:not(.full) { transform: translateY(-3px); }
+#deck-list .unit .cost { position: absolute; top: 5px; left: 5px; z-index: 1; background: var(--creation); color: #111; font-weight: 700; font-size: 12px; border-radius: 999px; padding: 1px 7px; }
+#deck-list .unit.picked { outline: 3px solid var(--life); box-shadow: 0 0 14px var(--life); }
+#deck-list .unit.picked::after { content: '✔'; position: absolute; top: 4px; right: 6px; color: var(--life); font-weight: 700; }
+#deck-list .unit.full:not(.picked) { opacity: .35; cursor: not-allowed; }
+@media (max-width: 900px) {
+  #deck-modal .modal-box { flex-direction: column; overflow-y: auto; }
+  #deck-side { flex: none; border-right: 0; padding-right: 0; }
+  #deck-list { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ---------- หน้าต่างมือเริ่มต้น: เลือกสุ่มใหม่ (Mulligan) ---------- */
+#mull-modal { background: #000d; backdrop-filter: blur(3px); }
+#mull-modal .modal-box { background: transparent; border: 0; max-width: 1100px; padding-block: 0; align-items: center; gap: 22px; text-align: center; }
+#mull-modal h2 { font-size: 22px; text-shadow: 0 2px 8px #000; }
+#mull-list { display: flex; gap: 14px; justify-content: center; flex-wrap: nowrap; width: 100%; padding: 28px 10px; overflow-x: auto; overflow-y: hidden; } /* overflow-y: hidden กันแถบเลื่อนแนวตั้งโผล่ตอนการ์ดพลิก (ขอบการ์ดขยายชั่วคราวจากมุมมอง 3D) · padding เผื่อที่ให้การ์ดยกตอนชี้ */
+#mull-list .magic-card { height: auto; flex: 1 1 0; min-width: 84px; max-width: 190px; aspect-ratio: 5 / 7; cursor: pointer; transition: transform .15s, filter .15s; overflow: hidden; }
+#mull-list .magic-card:hover { transform: translateY(-8px); }
+#mull-list .magic-card .icon { font-size: clamp(30px, 6vw, 64px); }
+#mull-list .magic-card .cn { font-size: 15px; padding: 6px 2px; }
+#mull-list .magic-card .cp { width: 34px; height: 34px; font-size: 20px; top: 8px; left: 8px; }
+#mull-list .magic-card.redraw { filter: saturate(.35) brightness(.55); border-color: var(--creation); }
+#mull-list .magic-card.redraw::after {
+  content: '↻\A สุ่มใหม่'; white-space: pre; position: absolute; inset: 0; display: grid; place-items: center; text-align: center;
+  font-size: 22px; font-weight: 700; color: var(--creation); background: #000a; line-height: 1.2; text-shadow: 0 2px 6px #000;
+}
+
+/* ---------- ตัวนับเวลาต่อเฟส: วงกลมเล็กคาบรอยต่อฟ้า/แดงของแถบ Influence (เลื่อนตามแต้มแบบนุ่ม ๆ) ---------- */
+#gauge-wrap { position: relative; }
+#phase-timer {
+  --p: 100%; position: absolute; top: -3px; left: 50%; width: 28px; height: 28px; margin-left: -14px; z-index: 2;
+  border-radius: 50%; display: grid; place-items: center; transition: left .5s, opacity .25s;
+  background: conic-gradient(var(--creation) var(--p), #0006 0);
+  box-shadow: 0 0 0 2px var(--panel), 0 2px 8px #000a;
+}
+#phase-timer::before { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--panel); }
+#phase-timer #pt-num { position: relative; font-size: 12px; line-height: 1; color: #fff; font-variant-numeric: tabular-nums; }
+#phase-timer.low { background: conic-gradient(#ff5b4d var(--p), #0006 0); animation: helpPulse 1s ease-in-out infinite; }
+#phase-timer.low #pt-num { color: #ff8a7e; }#mull-timer { color: var(--creation); margin-left: 8px; }
+
+
+/* =====================================================================
+   FX — อนิเมชันเสริม (ทดลอง) · ทุกอย่างอยู่ใต้ body.fx
+   ปิดทั้งหมด: ลบ class="fx" ออกจาก <body> ใน trial.html
+   ===================================================================== */
+/* หน้าต่าง: เฟดเข้า-ออก + กล่องเลื่อนขึ้นนุ่ม ๆ (ใช้ opacity/visibility แทน display:none เพื่อให้ตอนปิดก็เคลื่อนไหวได้) */
+body.fx .modal { opacity: 1; transition: opacity .22s ease, visibility 0s; }
+body.fx .modal.hidden { display: grid !important; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s ease, visibility 0s .2s; }
+body.fx .modal .modal-box { transition: transform .3s cubic-bezier(.2, .9, .3, 1.12), opacity .22s ease; }
+body.fx .modal.hidden .modal-box { transform: translateY(18px) scale(.96); opacity: 0; }
+/* ยูนิตบนสนาม: ลงสนาม / โดนยัด / ได้รับ Energy */
+body.fx .unit.fx-in { animation: fxIn .45s cubic-bezier(.2, .9, .3, 1.15); }
+body.fx .unit.fx-hit { animation: fxHit .5s ease-out; }
+body.fx .unit.fx-up { animation: fxUp .6s ease-out; }
+@keyframes fxIn { from { opacity: 0; transform: translateY(14px) scale(.85); filter: brightness(1.8); } }
+@keyframes fxHit {
+  0% { filter: brightness(1.9) saturate(1.5); box-shadow: 0 0 0 4px #ff5b4daa, 0 3px 8px #0008; }
+  20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
+  60% { transform: translateX(-2px); } 80% { transform: translateX(1px); }
+  100% { filter: none; }
+}
+@keyframes fxUp { 0% { box-shadow: 0 0 0 0 #4caf6acc; } 100% { box-shadow: 0 0 0 14px #4caf6a00; } }
+/* ไพ่บนมือ: แจกไพ่ไหลเข้า */
+body.fx #hand .magic-card.fx-deal { animation: fxDeal .45s cubic-bezier(.2, .85, .3, 1.1) backwards; }
+@keyframes fxDeal { from { opacity: 0; transform: translateY(40px) scale(.8) rotate(-6deg); } }
+/* การ์ดโจทย์พลิกเปิด */
+body.fx #challenge { animation: fxFlip .55s .12s cubic-bezier(.2, .8, .3, 1) backwards; }
+@keyframes fxFlip { from { opacity: 0; transform: perspective(600px) rotateY(90deg) scale(.9); } }
+/* Combat Log / tooltip */
+body.fx #log p { animation: fxLog .28s ease-out; }
+@keyframes fxLog { from { opacity: 0; transform: translateX(10px); } }
+body.fx #unit-tip:not(.hidden) { animation: fxTip .16s ease-out; }
+@keyframes fxTip { from { opacity: 0; transform: translateY(6px); } }
+/* ปุ่ม / แท่นวงเวทย์ / แถบ Influence: เปลี่ยนค่าแบบนุ่ม */
+body.fx .btn, body.fx .mode-btn { transition: background .15s, transform .1s, opacity .2s, border-color .15s; }
+body.fx .btn:active:not(:disabled), body.fx .mode-btn:active:not(:disabled) { transform: scale(.96); }
+body.fx .altar-slot { transition: background .35s, box-shadow .35s, color .35s, border-color .35s; }
+body.fx #gauge-player, body.fx #gauge-enemy { transition: width .6s cubic-bezier(.3, .8, .3, 1); }
+body.fx #inf-player, body.fx #inf-enemy { display: inline-block; }
+body.fx #inf-player.bump, body.fx #inf-enemy.bump { animation: fxBump .4s ease-out; }
+@keyframes fxBump { 40% { transform: scale(1.35); color: var(--creation); } }
+/* ป้ายเปลี่ยนเฟส: ลอยเบา ๆ กลางจอ ไม่บังการกด */
+#phase-banner {
+  position: fixed; left: 50%; top: 38%; z-index: 9; pointer-events: none; opacity: 0;
+  padding: 8px 34px; font-size: 22px; font-weight: 700; letter-spacing: 1px; color: #fff; white-space: nowrap;
+  background: linear-gradient(90deg, #0000, #000b 25%, #000b 75%, #0000);
+  text-shadow: 0 2px 8px #000;
+}
+body.fx #phase-banner.show { animation: fxBanner 1.5s ease-out; }
+@keyframes fxBanner {
+  0% { opacity: 0; transform: translate(-50%, 8px) scale(.92); }
+  18% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  72% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -8px) scale(1.02); }
+}
+
+/* แถบผู้เล่น + ปุ่มคำสั่ง Battle อยู่แถวเดียวกัน (ความสูงคงที่ ไม่ขยาย-หดตามเฟส) */
+.side-row { display: flex; align-items: center; gap: 12px; flex-wrap: nowrap; min-height: 40px; border-top: 1px solid var(--line); padding-top: 4px; }
+.side-row .side-bar { border-top: 0; padding-top: 0; flex: none; }
+.side-row #mode-bar { margin: 0 0 0 auto; flex-wrap: nowrap; gap: 6px; }
+.side-row .mode-btn { padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+
+/* ===== Fullart การ์ดเทพ =====
+   ภาพกว้างถูกขยายเป็น 240% ของความสูงการ์ด แล้วเลื่อนให้ "ใบหน้า" (≈ 49.5% ซ้าย, 22% บน ของภาพ) ตรงกึ่งกลางการ์ดพอดี
+   อยากขยับหน้า: แก้ background-position / ขนาดซูม (auto 240%) · ใช้กับเทพองค์อื่น: ทำ rule แบบเดียวกัน เปลี่ยนชื่อไฟล์และค่าตำแหน่งหน้า */
+:is(#arena, #god-list) .unit.god.creation {
+  background-image: linear-gradient(180deg, #0000 52%, #000c 100%), url("asset/god_creation.jpg");
+  background-size: 100% 100%, auto 240%;
+  background-position: 0 0, 49.5% 2%;
+  background-repeat: no-repeat;
+  background-color: #1a1408;
+}
+:is(#arena, #god-list) .unit.god.creation .icon { visibility: hidden; background: none; }
+:is(#arena, #god-list) .unit.god.creation .name { background: color-mix(in srgb, var(--c) 30%, rgb(0 0 0 / .72)); text-shadow: 0 1px 3px #000; }
+:is(#arena, #god-list) .unit.god.creation .pips, :is(#arena, #god-list) .unit.god.creation .tag { text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+
+/* Fullart เทพแห่งความตาย — ใบหน้า ≈ 52% ซ้าย, 23.6% บน ของภาพ (วัดจากภาพครอปจริง) → ซูม 300% แล้วเลื่อนให้อยู่กึ่งกลางการ์ด */
+:is(#arena, #god-list) .unit.god.death {
+  background-image: linear-gradient(180deg, #0000 52%, #000d 100%), url("asset/god_death.jpg");
+  background-size: 100% 100%, auto 300%;
+  background-position: 0 0, 52.3% 10.4%;
+  background-repeat: no-repeat;
+  background-color: #120a1c;
+}
+:is(#arena, #god-list) .unit.god.death .icon { visibility: hidden; background: none; }
+:is(#arena, #god-list) .unit.god.death .name { background: color-mix(in srgb, var(--c) 30%, rgb(0 0 0 / .72)); text-shadow: 0 1px 3px #000; }
+:is(#arena, #god-list) .unit.god.death .pips, :is(#arena, #god-list) .unit.god.death .tag { text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+
+/* Fullart เทพแห่งชีวิต — ใบหน้า ≈ 45.8% ซ้าย, 21.3% บน ของภาพ (วัดจากภาพครอปจริง) → ซูม 260% แล้วเลื่อนให้อยู่กึ่งกลางการ์ด */
+:is(#arena, #god-list) .unit.god.life {
+  background-image: linear-gradient(180deg, #0000 52%, #000c 100%), url("asset/god_life.jpg");
+  background-size: 100% 100%, auto 260%;
+  background-position: 0 0, 43.2% 5.2%;
+  background-repeat: no-repeat;
+  background-color: #0e1a10;
+}
+:is(#arena, #god-list) .unit.god.life .icon { visibility: hidden; background: none; }
+:is(#arena, #god-list) .unit.god.life .name { background: color-mix(in srgb, var(--c) 30%, rgb(0 0 0 / .72)); text-shadow: 0 1px 3px #000; }
+:is(#arena, #god-list) .unit.god.life .pips, :is(#arena, #god-list) .unit.god.life .tag { text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+
+/* Fullart เทพทำลายล้าง — หัว/มงกุฎหนามอยู่ ≈ 49.6% ซ้าย, 21.3% บน ของภาพ → ซูม 380% แล้วเลื่อนให้อยู่กึ่งกลางการ์ด */
+:is(#arena, #god-list) .unit.god.destruction {
+  background-image: linear-gradient(180deg, #0000 52%, #000d 100%), url("asset/god_destruction.jpg");
+  background-size: 100% 100%, auto 380%;
+  background-position: 0 0, 49.5% 12.1%;
+  background-repeat: no-repeat;
+  background-color: #1a0a08;
+}
+:is(#arena, #god-list) .unit.god.destruction .icon { visibility: hidden; background: none; }
+:is(#arena, #god-list) .unit.god.destruction .name { background: color-mix(in srgb, var(--c) 30%, rgb(0 0 0 / .72)); text-shadow: 0 1px 3px #000; }
+:is(#arena, #god-list) .unit.god.destruction .pips, :is(#arena, #god-list) .unit.god.destruction .tag { text-shadow: 0 1px 3px #000, 0 0 6px #000; }
+
+/* หน้าต่างเลือกเทพ: ใหญ่ขึ้นให้เห็นอาร์ตชัด ๆ (ขนาดการ์ดปรับตามความสูง/ความกว้างจอ) */
+#god-modal .modal-box { max-width: 1100px; padding: 22px 26px 26px; gap: 14px; }
+#god-modal .modal-box h2 { font-size: 26px; text-align: center; }
+#god-modal .modal-hint { font-size: 14px; text-align: center; margin-top: -8px; }
+#god-modal #god-list { flex-wrap: nowrap; gap: clamp(14px, 2.2vw, 30px); padding: 26px 16px 20px; }
+#god-modal #god-list .unit { height: min(54vh, calc((min(1100px, 100vw) - 150px) / 4 * 1.4)); }
+#god-modal #god-list .unit .name { font-size: clamp(14px, 1.7vw, 22px); min-height: 2.4em; }
+#god-modal #god-list .unit .pips { font-size: clamp(10px, 1.2vw, 16px); }
+#god-modal #god-list .unit .tag { font-size: clamp(11px, 1.3vw, 16px); }
+#god-modal #god-list .unit:hover { transform: translateY(-8px) scale(1.03); }
+
+/* เลือกเทพแบบคว่ำการ์ด + พลิกเปิดเมื่อมีคนเลือก */
+#god-modal #god-list .gcard {
+  position: relative; flex: 0 0 auto; aspect-ratio: 5 / 7; perspective: 1000px; cursor: pointer;
+  height: min(54vh, calc((min(1100px, 100vw) - 150px) / 4 * 1.4)); transition: transform .15s;
+}
+#god-modal #god-list .gcard:not(.taken):hover { transform: translateY(-8px) scale(1.03); }
+#god-modal #god-list .gcard.taken { cursor: default; }
+.gc-inner { position: relative; width: 100%; height: 100%; transform-style: preserve-3d; transition: transform .75s cubic-bezier(.2, .8, .2, 1); }
+.gcard.flip .gc-inner, .mc.flip .gc-inner { transform: rotateY(180deg); }
+.gc-back, .gc-front { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+.gc-front { transform: rotateY(180deg); }
+#god-modal #god-list .gcard .unit { width: 100%; height: 100%; }
+.gc-back {
+  border-radius: 12px; border: 3px solid #8a6d2f; display: grid; place-items: center;
+  font-size: clamp(34px, 5vw, 64px); color: #e0b43c99; text-shadow: 0 0 14px #e0b43c66;
+  background: repeating-linear-gradient(45deg, #ffffff0a 0 7px, #0000 7px 14px), radial-gradient(circle at 50% 45%, #3d2a55 0, #1b1026 75%);
+  box-shadow: 0 8px 20px #000b, inset 0 0 0 5px #0007, inset 0 0 0 6px #8a6d2f66;
+}
+.gc-owner {
+  position: absolute; left: 50%; top: -16px; transform: translateX(-50%); z-index: 6; opacity: 0; pointer-events: none;
+  padding: 2px 14px; border-radius: 999px; font-weight: 700; font-size: 14px; color: #fff; box-shadow: 0 2px 8px #000a; transition: opacity .3s .45s;
+}
+.gcard.taken .gc-owner { opacity: 1; }
+.gcard.mine .gc-owner { background: var(--player); }
+.gcard.foe .gc-owner { background: var(--enemy); }
+
+/* มือเริ่มต้น: การ์ดคว่ำแล้วพลิกเปิดทีละใบ */
+#mull-list .mc { position: relative; flex: 1 1 0; min-width: 84px; max-width: 190px; aspect-ratio: 5 / 7; perspective: 1000px; }
+#mull-list .mc .magic-card { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; min-width: 0; flex: none; }
+#mull-list .mc .gc-back { font-size: clamp(26px, 4vw, 52px); }
+#mull-go:disabled { opacity: .4; cursor: wait; }
+/* ---------- จอเล็ก ---------- */
+@media (max-width: 900px) {
+  #top { grid-template-columns: 1fr; gap: 6px; }
+  #main { grid-template-columns: 1fr; }
+  /* จอเล็กมาก (มือถือ) ไม่พอจะใส่ทั้งหมดในจอเดียว จึงยอมให้เลื่อนได้ */
+  body { overflow: auto; }
+  #app { height: auto; min-height: 100%; }
+  #main { grid-template-rows: auto; }
+  .zone { container-type: normal; min-height: 220px; } /* จอเล็กเลื่อนได้ → ไม่ใช้ size container */
+  #arena .unit { height: clamp(120px, 24vh, 200px); }
+  #log-panel { height: 140px; }
+  #hand-row { flex-direction: column; align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+@media (max-width: 900px) { .side-row, .side-row #mode-bar { flex-wrap: wrap; } }

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Gods — Graybox Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="fx">
+<div id="app">
+
+  <!-- โซนบนสุด: แถบ Influence + โจทย์วงเวทย์กลางสนาม -->
+  <header id="top">
+    <div id="turn-info">เทิร์น <b id="turn-num">1</b>/12 · เฟส: <b id="phase-name">-</b> · เล่นก่อน: <b id="first-name">-</b></div>
+    <div id="gauge-wrap">
+      <div id="gauge">
+        <div id="gauge-player"></div>
+        <div id="gauge-enemy"></div>
+      </div>
+      <div id="phase-timer" class="hidden" title="เวลาที่เหลือของเฟสนี้"><b id="pt-num">0</b></div>
+      <div id="gauge-text">ผู้เล่น <b id="inf-player">15</b> : <b id="inf-enemy">15</b> ศัตรู</div>
+    </div>
+    <!-- ปุ่มกฎการเล่น: เรืองแสงกระพริบเรียกความสนใจ ~20 วิแรกแล้วหยุด -->
+    <div class="top-actions">
+      <button id="btn-help" class="help-btn attention" aria-label="กฎการเล่น" title="กฎการเล่น">i</button>
+      <button id="btn-quit" class="quit-btn" aria-label="ยอมแพ้และออก" title="ยอมแพ้ / ออกจากเกม">🏳️</button>
+    </div>
+  </header>
+
+  <!-- โซนกลาง: สนามรบ + Combat Log -->
+  <main id="main">
+    <section id="arena">
+      <!-- โจทย์วงเวทย์: ลอยกลางสนามระหว่างศัตรูกับผู้เล่น แสดงเฉพาะ Energy Phase -->
+      <div id="challenge-wrap" class="hidden">
+        <span class="zone-label">โจทย์วงเวทย์</span>
+        <div id="ch-row">
+          <div id="played-b" class="played-list"></div>
+          <div id="challenge" class="magic-card"></div>
+          <div id="played-p" class="played-list"></div>
+        </div>
+      </div>
+      <div id="enemy-zone" class="zone">
+        <div class="row">
+          <div id="enemy-god" class="slot-god"></div>
+          <div id="enemy-heroes" class="slot-heroes"></div>
+        </div>
+        <div id="bar-enemy" class="side-bar"></div>
+      </div>
+      <div id="player-zone" class="zone">
+        <div class="row">
+          <div id="player-god" class="slot-god"></div>
+          <div id="player-heroes" class="slot-heroes"></div>
+          <div id="altar">
+            <span class="zone-label">แท่นวงเวทย์</span>
+            <div id="altar-grid">
+              <div class="altar-slot" data-pos="tl">↖</div>
+              <div class="altar-slot" data-pos="tr">↗</div>
+              <div class="altar-slot" data-pos="c">✦</div>
+              <div class="altar-slot" data-pos="bl">↙</div>
+              <div class="altar-slot" data-pos="br">↘</div>
+            </div>
+          </div>
+        </div>
+        <div class="side-row">
+          <div id="bar-player" class="side-bar"></div>
+          <div id="mode-bar" class="hidden">
+      <button class="mode-btn" data-mode="attack">⚔️ ยัด Energy ใส่ศัตรู</button>
+      <button class="mode-btn" data-mode="charge">🛡️ ชาร์จฝั่งเรา</button>
+      <button class="mode-btn" data-mode="hero-skill">✨ สกิลฮีโร่</button>
+      <button class="mode-btn" data-mode="god-skill">🔱 สกิลเทพ</button>
+    </div>
+        </div>
+      </div>
+    </section>
+    <aside id="log-panel">
+      <span class="zone-label">Combat Log</span>
+      <div id="log"></div>
+    </aside>
+  </main>
+
+  <!-- โซนล่างสุด: มือการ์ด + ปุ่มควบคุม -->
+  <footer id="bottom">
+    <div id="hand-row">
+      <div id="hand"></div>
+      <div id="controls">
+        <div id="energy-box">⚡ Energy <b id="energy-num">0</b></div>
+        <button id="btn-burn" class="btn" disabled>🔥 เผาการ์ด (เลือก 2)</button>
+        <button id="btn-heroes" class="btn">🧙 คลังฮีโร่</button>
+        <button id="btn-phase" class="btn primary">Next Phase ▶</button>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<!-- หน้าต่างคลังฮีโร่ (Pick Up Hero Phase) -->
+<div id="hero-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>คลังฮีโร่</h2>
+    <p id="hero-modal-note">อัญเชิญได้สูงสุด 2 ตัว/เทิร์น · ลงสนามพร้อมกันได้ 3 ตัว</p>
+    <div id="hero-list"></div>
+    <button id="hero-close" class="btn">ปิด</button>
+  </div>
+</div>
+
+<!-- หน้าต่างเลือกเด็คฮีโร่ 8 ใบ (ก่อนเริ่มเกม มีเวลานับถอยหลัง) -->
+<div id="deck-modal" class="modal hidden">
+  <div class="modal-box">
+    <div id="deck-side">
+      <h2><span>เลือกฮีโร่ <span id="deck-need">8</span> ใบ</span><span id="deck-timer">60</span></h2>
+      <div class="deck-who"><div class="nm"><span>🧑 ผู้เล่น</span><small id="deck-count">0/8</small></div><div id="deck-slots-p" class="deck-slots"></div></div>
+      <div class="deck-who"><div class="nm"><span>🤖 ศัตรู (บอท)</span><small id="deck-count-b">0/8</small></div><div id="deck-slots-b" class="deck-slots"></div></div>
+      <button id="deck-rand" class="btn">🎲 สุ่มให้ครบ</button>
+      <button id="deck-go" class="btn primary" disabled>ยืนยันเด็ค ▶</button>
+    </div>
+    <div id="deck-main">
+      <p class="modal-hint">คลิกการ์ดเพื่อเลือก/ยกเลิก · กดค้างเพื่ออ่านสกิล · หมดเวลาระบบจะสุ่มที่เหลือให้ แล้วเริ่มเกมทันที</p>
+      <div id="deck-list"></div>
+    </div>
+  </div>
+</div>
+<!-- หน้าต่างมือเริ่มต้น: เลือกการ์ดที่จะสุ่มใหม่ -->
+<div id="mull-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>เลือกการ์ดที่ต้องการ "สุ่มใหม่" จากมือเริ่มต้น <span id="mull-timer"></span></h2>
+    <div id="mull-list"></div>
+    <p class="modal-hint">คลิกการ์ดเพื่อเลือกสุ่มใหม่ (คลิกซ้ำเพื่อยกเลิก) · สุ่มใหม่ได้ครั้งเดียวตอนเริ่มเกม</p>
+    <button id="mull-go" class="btn primary">เก็บไว้ทั้งหมด</button>
+  </div>
+</div>
+<!-- หน้าต่างเลือกเทพ (Awakening / เริ่มเกม) -->
+<div id="god-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2 id="god-modal-title">เลือกเทพประจำตัว</h2>
+    <p class="modal-hint">กดค้างที่การ์ดเพื่ออ่านความสามารถ · คลิกเพื่อเลือก</p>
+    <div id="god-list"></div>
+  </div>
+</div>
+
+<!-- หน้าต่างจบเกม -->
+<div id="end-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2 id="end-title"></h2>
+    <p id="end-desc"></p>
+    <button id="btn-restart" class="btn primary">เล่นใหม่</button>
+    <a href="index.html" class="btn" style="text-align:center;text-decoration:none">🏠 กลับหน้าหลัก</a>
+  </div>
+</div>
+
+<!-- หน้าต่างกฎการเล่น (สรุปย่อ / ละเอียด) -->
+<div id="rules-modal" class="modal hidden">
+  <div class="modal-box rules-box">
+    <div class="rules-head">
+      <h2>📖 กฎการเล่น</h2>
+      <div class="tabs">
+        <button class="tab active" data-tab="quick">สรุปย่อ</button>
+        <button class="tab" data-tab="detail">ละเอียด</button>
+      </div>
+    </div>
+    <div id="rules-body"></div>
+    <button id="rules-close" class="btn">ปิด</button>
+  </div>
+</div>
+
+<!-- ยืนยันยอมแพ้ -->
+<div id="quit-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>🏳️ ยอมแพ้?</h2>
+    <p>ถ้ายอมแพ้ เกมนี้จะจบและกลับไปหน้าหลัก (นับเป็นการแพ้)</p>
+    <button id="quit-yes" class="btn primary">ยอมแพ้ และกลับหน้าหลัก</button>
+    <button id="quit-no" class="btn">เล่นต่อ</button>
+  </div>
+</div>
+
+<div id="unit-tip" class="hidden"></div>
+
+<script src="data.js"></script>
+<script src="script.js"></script>
+</body>
+</html>

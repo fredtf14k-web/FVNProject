@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Gods — Deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="deck.css">
+</head>
+<body class="deckpage">
+<div id="dk">
+  <header id="dk-top">
+    <a href="index.html" class="dk-back">← หน้าหลัก</a>
+    <h1>🃏 เด็คลิสต์การ์ดทั้งหมด</h1>
+    <div class="tabs" id="dk-tabs">
+      <button class="tab active" data-tab="gods">เทพ <b>4</b></button>
+      <button class="tab" data-tab="heroes">ฮีโร่ <b>12</b></button>
+      <button class="tab" data-tab="magic">การ์ดวงเวทย์</button>
+    </div>
+  </header>
+
+  <div id="dk-body">
+    <section id="dk-main">
+      <div id="dk-filter" class="hidden">
+        <button class="chip active" data-c="all">ทั้งหมด</button>
+        <button class="chip" data-c="1">ค่าร่าย 1</button>
+        <button class="chip" data-c="2">ค่าร่าย 2</button>
+        <button class="chip" data-c="3">ค่าร่าย 3+</button>
+      </div>
+      <div id="god-list" class="dk-grid"></div>
+      <div id="deck-list" class="dk-grid hidden"></div>
+      <div id="magic-list" class="hidden"></div>
+    </section>
+    <aside id="dk-detail">
+      <p class="hint">เลือกการ์ดเพื่อดูรายละเอียด</p>
+    </aside>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script src="deck.js"></script>
+</body>
+</html>

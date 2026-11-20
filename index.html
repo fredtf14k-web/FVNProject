@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Four Gods — Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="home.css">
+</head>
+<body>
+<!-- ฉากหลัง: อาร์ตเทพทั้ง 4 เป็นแถบตั้ง -->
+<div id="strips" aria-hidden="true">
+  <i style="background-image:url('asset/god_creation.jpg');background-position:50% 20%"></i>
+  <i style="background-image:url('asset/god_life.jpg');background-position:46% 20%"></i>
+  <i style="background-image:url('asset/god_destruction.jpg');background-position:50% 20%"></i>
+  <i style="background-image:url('asset/god_death.jpg');background-position:52% 20%"></i>
+</div>
+<div id="veil"></div>
+
+<main id="home">
+  <header>
+    <h1>Four Gods</h1>
+    <p>เกมการ์ดสี่เทพ · Prototype</p>
+  </header>
+
+  <nav id="menu">
+    <a class="mbtn" href="vn/index.html">
+      <span class="mi">📖</span><span class="mt">Story<small>เนื้อเรื่อง</small></span>
+    </a>
+    <a class="mbtn" href="trial.html">
+      <span class="mi">⚔️</span><span class="mt">Trial<small>โหมดดวลกับบอท</small></span>
+    </a>
+    <a class="mbtn" href="deck.html">
+      <span class="mi">🃏</span><span class="mt">Deck<small>เด็คลิสต์การ์ดทุกใบ</small></span>
+    </a>
+    <button class="mbtn" id="btn-setting" type="button">
+      <span class="mi">⚙️</span><span class="mt">Setting<small>การตั้งค่า</small></span>
+    </button>
+  </nav>
+
+  <footer>v0.1 prototype</footer>
+</main>
+
+<!-- หน้าต่างตั้งค่า -->
+<div id="set-modal" class="modal hidden">
+  <div class="modal-box">
+    <h2>⚙️ การตั้งค่า</h2>
+    <div class="row">
+      <div class="lbl">อนิเมชันในเกม<small>เปิด/ปิดเอฟเฟกต์การเคลื่อนไหวเสริม</small></div>
+      <div class="seg" data-key="anim">
+        <button data-v="true">เปิด</button><button data-v="false">ปิด</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="lbl">ความเร็วบอท<small>จังหวะที่บอทเล่นในโหมด Trial</small></div>
+      <div class="seg" data-key="botSpeed">
+        <button data-v="0.6">เร็ว</button><button data-v="1">ปกติ</button><button data-v="1.6">ช้า</button>
+      </div>
+    </div>
+    <div class="row">
+      <div class="lbl">ตัวนับเวลาต่อเฟส<small>ปิดแล้วคิดนานเท่าไรก็ได้ (เลือกเด็ค/เลือกเทพยังมีเวลา)</small></div>
+      <div class="seg" data-key="timer">
+        <button data-v="true">เปิด</button><button data-v="false">ปิด</button>
+      </div>
+    </div>
+    <div class="row dim">
+      <div class="lbl">เสียง<small>เร็ว ๆ นี้</small></div>
+      <div class="seg"><button disabled>—</button></div>
+    </div>
+    <div class="row">
+      <div class="lbl">ข้อมูลเซฟ<small>ล้างเซฟเนื้อเรื่อง (Story)</small></div>
+      <div class="seg"><button id="btn-clear" type="button">ล้างเซฟ</button></div>
+    </div>
+    <p id="set-note" class="note">การตั้งค่าบันทึกอัตโนมัติ</p>
+    <button id="set-close" class="mbtn small" type="button">ปิด</button>
+  </div>
+</div>
+
+<script src="home.js"></script>
+</body>
+</html>
